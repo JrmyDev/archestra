@@ -16,12 +16,14 @@ import hashlib
 import base64
 import urllib.request
 from urllib.error import HTTPError
+import time
 
 # OAuth Configuration (NO SECRET HERE)
 CLIENT_ID = '354887056155-otc8l2ocrr0a7qnkbnt8u19bfh0rqudj.apps.googleusercontent.com'
 AUTH_URI = 'https://accounts.google.com/o/oauth2/v2/auth'
 PROXY_SERVER = 'http://localhost:8888'  # Our proxy server that has the secret
 USERINFO_URI = 'https://www.googleapis.com/oauth2/v2/userinfo'
+TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo'
 
 # Local server configuration
 PORT = 8080
@@ -223,6 +225,119 @@ def get_user_info(access_token):
         print(f"❌ Failed to get user info: {e}")
         return None
 
+def verify_id_token(id_token_str):
+    """Simple ID token verification by decoding JWT"""
+    try:
+        # Split the JWT token
+        parts = id_token_str.split('.')
+        if len(parts) != 3:
+            return False, "Invalid token format"
+        
+        # Decode the payload (middle part)
+        payload = parts[1]
+        # Add padding if needed
+        padding = 4 - (len(payload) % 4)
+        if padding != 4:
+            payload += '=' * padding
+        
+        decoded = json.loads(base64.urlsafe_b64decode(payload))
+        
+        # Check expiration
+        current_time = time.time()
+        exp_time = decoded.get('exp', 0)
+        if exp_time < current_time:
+            return False, f"Token expired (expired {int(current_time - exp_time)} seconds ago)"
+        
+        # Check issuer
+        if decoded.get('iss') not in ['accounts.google.com', 'https://accounts.google.com']:
+            return False, f"Invalid issuer: {decoded.get('iss')}"
+        
+        # Check audience (should match our client ID)
+        if decoded.get('aud') != CLIENT_ID:
+            return False, f"Invalid audience: {decoded.get('aud')}"
+        
+        # Token is valid
+        return True, decoded
+        
+    except Exception as e:
+        return False, f"Decode error: {str(e)}"
+
+def verify_access_token(access_token):
+    """Verify access token using Google's tokeninfo endpoint"""
+    print("   → Calling Google tokeninfo endpoint...")
+    try:
+        req = urllib.request.Request(
+            f"{TOKENINFO_URL}?access_token={access_token}"
+        )
+        
+        with urllib.request.urlopen(req) as response:
+            token_info = json.loads(response.read())
+            
+            # Check if token is valid
+            if 'error' in token_info:
+                return False, token_info.get('error_description', 'Invalid token')
+            
+            # Check expiry
+            expires_in = token_info.get('expires_in', 0)
+            # Convert to int if it's a string
+            if isinstance(expires_in, str):
+                expires_in = int(expires_in)
+            if expires_in <= 0:
+                return False, "Token expired"
+            
+            return True, token_info
+            
+    except HTTPError as e:
+        error_body = e.read().decode('utf-8')
+        return False, f"HTTP error: {error_body}"
+    except Exception as e:
+        return False, f"Request error: {str(e)}"
+
+def display_and_verify_tokens(tokens):
+    """Display tokens and verify them"""
+    print("\n📦 Tokens Received:")
+    print("─" * 50)
+    
+    # Access Token
+    if 'access_token' in tokens:
+        print(f"Access Token: {tokens['access_token'][:50]}...")
+        print(f"Token Type: {tokens['token_type']}")
+        print(f"Expires In: {tokens.get('expires_in', 'N/A')} seconds")
+        
+        # Verify access token
+        print("\n🔍 Verifying Access Token...")
+        is_valid, result = verify_access_token(tokens['access_token'])
+        if is_valid:
+            print(f"   ✅ Access token is valid!")
+            print(f"   Scope: {result.get('scope', 'N/A')}")
+            print(f"   Email: {result.get('email', 'N/A')}")
+            print(f"   Expires in: {result.get('expires_in', 'N/A')} seconds")
+        else:
+            print(f"   ❌ Access token invalid: {result}")
+    
+    # Refresh Token
+    if 'refresh_token' in tokens:
+        print(f"\nRefresh Token: {tokens['refresh_token'][:50]}...")
+    
+    # ID Token
+    if 'id_token' in tokens:
+        print(f"\nID Token: {tokens['id_token'][:50]}...")
+        
+        # Verify ID token
+        print("\n🔍 Verifying ID Token...")
+        is_valid, claims = verify_id_token(tokens['id_token'])
+        if is_valid:
+            print(f"   ✅ ID token is valid!")
+            print(f"   Email: {claims.get('email', 'N/A')}")
+            print(f"   Name: {claims.get('name', 'N/A')}")
+            print(f"   Email Verified: {claims.get('email_verified', 'N/A')}")
+            exp_time = claims.get('exp', 0)
+            remaining = exp_time - time.time()
+            print(f"   Expires in: {int(remaining)} seconds")
+            print(f"   Issued by: {claims.get('iss', 'N/A')}")
+        else:
+            print(f"   ❌ ID token invalid: {claims}")
+
 def check_proxy_server():
     """Check if proxy server is running"""
     try:
@@ -273,16 +388,8 @@ The proxy server handles the client secret securely.
     if not tokens:
         return
     
-    # Display tokens
-    print("\n📦 Tokens Received:")
-    print("─" * 50)
-    print(f"Access Token: {tokens['access_token'][:50]}...")
-    print(f"Token Type: {tokens['token_type']}")
-    print(f"Expires In: {tokens.get('expires_in', 'N/A')} seconds")
-    if 'refresh_token' in tokens:
-        print(f"Refresh Token: {tokens['refresh_token'][:50]}...")
-    if 'id_token' in tokens:
-        print(f"ID Token: {tokens['id_token'][:50]}...")
+    # Display and verify tokens
+    display_and_verify_tokens(tokens)
     
     # Step 3: Get user info
     if 'access_token' in tokens:
@@ -298,6 +405,48 @@ The proxy server handles the client secret securely.
             print(f"Verified Email: {user_info.get('verified_email', 'N/A')}")
     
     print("\n✨ OAuth flow complete!")
+    
+    # Option to test token verification separately
+    print("\n" + "─" * 50)
+    test_verify = input("\n🔍 Test token verification again? (y/n): ").lower()
+    if test_verify == 'y':
+        print("\nChoose token to verify:")
+        print("1. Access Token")
+        print("2. ID Token") 
+        print("3. Enter custom token")
+        
+        choice = input("\nChoice (1-3): ").strip()
+        
+        if choice == '1' and 'access_token' in tokens:
+            print("\n🔍 Re-verifying Access Token...")
+            is_valid, result = verify_access_token(tokens['access_token'])
+            if is_valid:
+                print(f"✅ Still valid! Expires in: {result.get('expires_in')} seconds")
+            else:
+                print(f"❌ No longer valid: {result}")
+        
+        elif choice == '2' and 'id_token' in tokens:
+            print("\n🔍 Re-verifying ID Token...")
+            is_valid, claims = verify_id_token(tokens['id_token'])
+            if is_valid:
+                remaining = claims.get('exp', 0) - time.time()
+                print(f"✅ Still valid! Expires in: {int(remaining)} seconds")
+            else:
+                print(f"❌ No longer valid: {claims}")
+        
+        elif choice == '3':
+            custom_token = input("Enter token: ").strip()
+            # Try as ID token first
+            is_valid, result = verify_id_token(custom_token)
+            if is_valid:
+                print(f"✅ Valid ID token for: {result.get('email')}")
+            else:
+                # Try as access token
+                is_valid, result = verify_access_token(custom_token)
+                if is_valid:
+                    print(f"✅ Valid access token! Scope: {result.get('scope')}")
+                else:
+                    print(f"❌ Invalid token: {result}")
     
     # Optionally refresh the access token
     if 'refresh_token' in tokens:
