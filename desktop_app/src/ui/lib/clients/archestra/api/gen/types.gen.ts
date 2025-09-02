@@ -202,7 +202,7 @@ export type McpServerInstallInput = {
   displayName: string;
   serverConfig: McpServerConfigInput;
   userConfigValues?: McpServerUserConfigValuesInput;
-  oauthProvider?: 'google' | 'slack' | 'slack-browser' | 'linkedin-browser';
+  oauthProvider: ('google' | 'slack' | 'slack-browser' | 'linkedin-browser') | null;
   oauthAccessToken?: string;
   oauthRefreshToken?: string;
   oauthExpiryDate?: string | null;
@@ -485,7 +485,7 @@ export type McpServerInstall = {
   displayName: string;
   serverConfig: McpServerConfig;
   userConfigValues?: McpServerUserConfigValues;
-  oauthProvider?: 'google' | 'slack' | 'slack-browser' | 'linkedin-browser';
+  oauthProvider: ('google' | 'slack' | 'slack-browser' | 'linkedin-browser') | null;
   oauthAccessToken?: string;
   oauthRefreshToken?: string;
   oauthExpiryDate?: string | null;
@@ -1058,6 +1058,36 @@ export type GetAvailableToolsResponses = {
 };
 
 export type GetAvailableToolsResponse = GetAvailableToolsResponses[keyof GetAvailableToolsResponses];
+
+export type ListOAuthProvidersData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/api/oauth/providers';
+};
+
+export type ListOAuthProvidersResponses = {
+  /**
+   * Default Response
+   */
+  200: Array<{
+    name: string;
+    displayName: string;
+    scopes: Array<string>;
+    requiresSpecialAuth?: boolean;
+    browserAuthEnabled?: boolean;
+    supportsRefresh?: boolean;
+    documentationUrl?: string;
+    notes?: string;
+    connectedServers: Array<{
+      id: string;
+      name: string;
+      hasOAuthToken: boolean;
+    }>;
+  }>;
+};
+
+export type ListOAuthProvidersResponse = ListOAuthProvidersResponses[keyof ListOAuthProvidersResponses];
 
 export type StartMcpServerOauthData = {
   body: {

@@ -54,6 +54,8 @@ import type {
   InstallMcpServerData,
   InstallMcpServerErrors,
   InstallMcpServerResponses,
+  ListOAuthProvidersData,
+  ListOAuthProvidersResponses,
   OauthCallbackData,
   OauthCallbackResponses,
   StartMcpServerOauthData,
@@ -361,6 +363,18 @@ export const getAvailableTools = <ThrowOnError extends boolean = false>(
 ) => {
   return (options?.client ?? _heyApiClient).get<GetAvailableToolsResponses, unknown, ThrowOnError>({
     url: '/api/mcp_server/tools',
+    ...options,
+  });
+};
+
+/**
+ * List all available OAuth providers
+ */
+export const listOAuthProviders = <ThrowOnError extends boolean = false>(
+  options?: Options<ListOAuthProvidersData, ThrowOnError>
+) => {
+  return (options?.client ?? _heyApiClient).get<ListOAuthProvidersResponses, unknown, ThrowOnError>({
+    url: '/api/oauth/providers',
     ...options,
   });
 };

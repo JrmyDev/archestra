@@ -123,6 +123,16 @@ export default function Sidebar({ children }: SidebarProps) {
                                 </Link>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton
+                                asChild
+                                isActive={location.pathname === '/settings/oauth-providers'}
+                              >
+                                <Link to="/settings/oauth-providers">
+                                  <span>OAuth Providers</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
                           </SidebarMenuSub>
                         </CollapsibleContent>
                       </SidebarMenuItem>

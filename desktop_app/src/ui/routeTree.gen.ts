@@ -17,6 +17,7 @@ import { Route as ChatRouteImport } from './routes/chat'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as SettingsOllamaRouteImport } from './routes/settings/ollama'
+import { Route as SettingsOauthProvidersRouteImport } from './routes/settings/oauth-providers'
 import { Route as SettingsMcpServersRouteImport } from './routes/settings/mcp-servers'
 import { Route as SettingsMcpClientsRouteImport } from './routes/settings/mcp-clients'
 import { Route as LlmProvidersOllamaRouteImport } from './routes/llm-providers/ollama'
@@ -62,6 +63,11 @@ const SettingsOllamaRoute = SettingsOllamaRouteImport.update({
   path: '/ollama',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsOauthProvidersRoute = SettingsOauthProvidersRouteImport.update({
+  id: '/oauth-providers',
+  path: '/oauth-providers',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsMcpServersRoute = SettingsMcpServersRouteImport.update({
   id: '/mcp-servers',
   path: '/mcp-servers',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/llm-providers/ollama': typeof LlmProvidersOllamaRoute
   '/settings/mcp-clients': typeof SettingsMcpClientsRoute
   '/settings/mcp-servers': typeof SettingsMcpServersRoute
+  '/settings/oauth-providers': typeof SettingsOauthProvidersRoute
   '/settings/ollama': typeof SettingsOllamaRoute
   '/settings/': typeof SettingsIndexRoute
 }
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/llm-providers/ollama': typeof LlmProvidersOllamaRoute
   '/settings/mcp-clients': typeof SettingsMcpClientsRoute
   '/settings/mcp-servers': typeof SettingsMcpServersRoute
+  '/settings/oauth-providers': typeof SettingsOauthProvidersRoute
   '/settings/ollama': typeof SettingsOllamaRoute
   '/settings': typeof SettingsIndexRoute
 }
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/llm-providers/ollama': typeof LlmProvidersOllamaRoute
   '/settings/mcp-clients': typeof SettingsMcpClientsRoute
   '/settings/mcp-servers': typeof SettingsMcpServersRoute
+  '/settings/oauth-providers': typeof SettingsOauthProvidersRoute
   '/settings/ollama': typeof SettingsOllamaRoute
   '/settings/': typeof SettingsIndexRoute
 }
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/llm-providers/ollama'
     | '/settings/mcp-clients'
     | '/settings/mcp-servers'
+    | '/settings/oauth-providers'
     | '/settings/ollama'
     | '/settings/'
   fileRoutesByTo: FileRoutesByTo
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/llm-providers/ollama'
     | '/settings/mcp-clients'
     | '/settings/mcp-servers'
+    | '/settings/oauth-providers'
     | '/settings/ollama'
     | '/settings'
   id:
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/llm-providers/ollama'
     | '/settings/mcp-clients'
     | '/settings/mcp-servers'
+    | '/settings/oauth-providers'
     | '/settings/ollama'
     | '/settings/'
   fileRoutesById: FileRoutesById
@@ -236,6 +248,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsOllamaRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/oauth-providers': {
+      id: '/settings/oauth-providers'
+      path: '/oauth-providers'
+      fullPath: '/settings/oauth-providers'
+      preLoaderRoute: typeof SettingsOauthProvidersRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/mcp-servers': {
       id: '/settings/mcp-servers'
       path: '/mcp-servers'
@@ -284,6 +303,7 @@ const LlmProvidersRouteWithChildren = LlmProvidersRoute._addFileChildren(
 interface SettingsRouteChildren {
   SettingsMcpClientsRoute: typeof SettingsMcpClientsRoute
   SettingsMcpServersRoute: typeof SettingsMcpServersRoute
+  SettingsOauthProvidersRoute: typeof SettingsOauthProvidersRoute
   SettingsOllamaRoute: typeof SettingsOllamaRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
@@ -291,6 +311,7 @@ interface SettingsRouteChildren {
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsMcpClientsRoute: SettingsMcpClientsRoute,
   SettingsMcpServersRoute: SettingsMcpServersRoute,
+  SettingsOauthProvidersRoute: SettingsOauthProvidersRoute,
   SettingsOllamaRoute: SettingsOllamaRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }

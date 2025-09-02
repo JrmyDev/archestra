@@ -7,7 +7,7 @@ import { ErrorResponseSchema } from '@backend/schemas';
 import log from '@backend/utils/logger';
 
 import { TokenResponse } from './provider-interface';
-import { getOAuthProvider } from './providers';
+import { getOAuthProvider, getOAuthProviderNames, oauthProviders } from './providers';
 import { getOAuthProxyUrl } from './utils/oauth-config';
 import { getAuthorizationParams, handleProviderTokens, validateProvider } from './utils/oauth-provider-helper';
 import { generateCodeChallenge, generateCodeVerifier, generateState } from './utils/pkce';
@@ -43,6 +43,82 @@ function extractEmailFromIdToken(idToken: string): string | undefined {
 }
 
 const oauthRoutes: FastifyPluginAsyncZod = async (fastify) => {
+  // List all available OAuth providers
+  fastify.get(
+    '/api/oauth/providers',
+    {
+      schema: {
+        operationId: 'listOAuthProviders',
+        description: 'List all available OAuth providers',
+        tags: ['OAuth'],
+        response: {
+          200: z.array(
+            z.object({
+              name: z.string(),
+              displayName: z.string(),
+              scopes: z.array(z.string()),
+              requiresSpecialAuth: z.boolean().optional(),
+              browserAuthEnabled: z.boolean().optional(),
+              supportsRefresh: z.boolean().optional(),
+              documentationUrl: z.string().optional(),
+              notes: z.string().optional(),
+              connectedServers: z.array(
+                z.object({
+                  id: z.string(),
+                  name: z.string(),
+                  hasOAuthToken: z.boolean(),
+                })
+              ),
+            })
+          ),
+        },
+      },
+    },
+    async (request, reply) => {
+      // Get all MCP servers
+      const allServers = await McpServerModel.getAll();
+      
+      // Map to identify which servers use which OAuth provider based on env vars
+      const providerEnvPatterns: Record<string, string[]> = {
+        google: ['GOOGLE_OAUTH_TOKEN', 'GOOGLE_OAUTH_EMAIL'],
+        slack: ['SLACK_MCP_XOXP_TOKEN'],
+        'slack-browser': ['SLACK_MCP_XOXC_TOKEN', 'SLACK_MCP_XOXD_TOKEN'],
+        'linkedin-browser': ['LINKEDIN_COOKIE'],
+      };
+
+      const providers = Object.values(oauthProviders).map((provider) => {
+        // Find servers that use this OAuth provider
+        const envVars = providerEnvPatterns[provider.name] || [];
+        const connectedServers = allServers.filter((server) => {
+          // Check if server has OAuth tokens
+          if (server.oauthAccessToken) {
+            // Check if any of the provider's env vars are in the server config
+            return envVars.some((envVar) => server.serverConfig.env?.[envVar]);
+          }
+          return false;
+        }).map((server) => ({
+          id: server.id,
+          name: server.name,
+          hasOAuthToken: !!server.oauthAccessToken,
+        }));
+
+        return {
+          name: provider.name,
+          displayName: provider.metadata?.displayName || provider.name,
+          scopes: provider.scopes,
+          requiresSpecialAuth: provider.requiresSpecialAuth || false,
+          browserAuthEnabled: provider.browserAuthConfig?.enabled || false,
+          supportsRefresh: provider.metadata?.supportsRefresh || false,
+          documentationUrl: provider.metadata?.documentationUrl,
+          notes: provider.metadata?.notes,
+          connectedServers: connectedServers || [], // Ensure it's always an array
+        };
+      });
+
+      return reply.send(providers);
+    }
+  );
+
   fastify.post(
     '/api/mcp_server/start_oauth',
     {
